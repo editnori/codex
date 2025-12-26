@@ -30,11 +30,15 @@ use owo_colors::OwoColorize;
 use std::path::PathBuf;
 use supports_color::Stream;
 
+mod concept_extract;
 mod mcp_cmd;
+mod sig_concept_extract;
 #[cfg(not(windows))]
 mod wsl_paths;
 
+use crate::concept_extract::ConceptExtractCommand;
 use crate::mcp_cmd::McpCli;
+use crate::sig_concept_extract::SigConceptExtractCommand;
 
 use codex_core::config::Config;
 use codex_core::config::ConfigOverrides;
@@ -131,6 +135,14 @@ enum Subcommand {
 
     /// Inspect feature flags.
     Features(FeaturesCli),
+
+    /// [EXPERIMENTAL] Extract ontology-grounded concepts with dictionary gating.
+    #[clap(visible_alias = "concepts")]
+    ConceptExtract(ConceptExtractCommand),
+
+    /// [EXPERIMENTAL] Extract SIG spans using a SmartSig-derived lexicon.
+    #[clap(name = "sig-concept-extract", visible_alias = "sig-extract")]
+    SigConceptExtract(SigConceptExtractCommand),
 }
 
 #[derive(Debug, Parser)]
@@ -645,6 +657,20 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()
                 }
             }
         },
+        Some(Subcommand::ConceptExtract(mut extract_cli)) => {
+            prepend_config_flags(
+                &mut extract_cli.config_overrides,
+                root_config_overrides.clone(),
+            );
+            concept_extract::run(extract_cli, codex_linux_sandbox_exe).await?;
+        }
+        Some(Subcommand::SigConceptExtract(mut extract_cli)) => {
+            prepend_config_flags(
+                &mut extract_cli.config_overrides,
+                root_config_overrides.clone(),
+            );
+            sig_concept_extract::run(extract_cli, codex_linux_sandbox_exe).await?;
+        }
     }
 
     Ok(())

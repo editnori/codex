@@ -83,6 +83,67 @@ codex exec "Extract details of the project" --output-schema ~/schema.json
 
 Combine `--output-schema` with `-o` to only print the final JSON output. You can also pass a file path to `-o` to save the JSON output to a file.
 
+### Concept extraction (dictionary-gated) [experimental]
+
+`codex concept-extract` is a specialized, non-interactive mode that:
+
+- scans a local dictionary (HSQLDB `.script`) to generate candidate concept IDs,
+- runs Codex in strict schema mode to select `mention_id` → `concept_id` plus assertion/temporality/experiencer attributes,
+- outputs machine-ingestible JSON only.
+
+It never invents concept IDs outside the provided candidate list.
+
+Example:
+
+```shell
+codex concept-extract \
+  --input ./note.txt \
+  --dict-script ./KidneyStone_SDOH/KidneyStone_SDOH.script \
+  --output ./concepts.json \
+  --skip-git-repo-check
+```
+
+Notes:
+
+- If `--dict-script` is omitted, Codex looks for `KidneyStone_SDOH/KidneyStone_SDOH.script` in the current working directory.
+- Use `--text` to pass a literal string instead of a file.
+- `--max-candidates` and `--max-mentions` bound prompt size when working with large dictionaries.
+- Output concepts include `mention_id`, `assertion`, `temporality`, `experiencer`, and lightweight context (`section_title`, `sentence`, `window`).
+
+### SIG concept extraction (SmartSig lexicon) [experimental]
+
+`codex sig-concept-extract` is a specialized SIG parser that:
+
+- scans a SmartSig-derived lexicon (`.script`) to generate category-scoped mention candidates,
+- runs Codex in strict schema mode to select a canonical concept per mention,
+- emits normalized spans (plus deterministic numeric/date/ICD spans and residual text).
+
+Example:
+
+```shell
+codex sig-concept-extract \
+  --input ./sig.txt \
+  --dict-script ./smartsig_sig_lexicon_ext.script \
+  --overlay-script ./smartsig_sig_lexicon_overlay.script \
+  --output ./sig_spans.json \
+  --skip-git-repo-check
+```
+
+Notes:
+
+- If `--dict-script` is omitted, Codex looks for `smartsig_sig_lexicon_ext.script` in the current working directory.
+- If `--overlay-script` is omitted and `smartsig_sig_lexicon_overlay.script` exists in the current working directory, it is loaded automatically.
+- Use `--sig` to pass a literal SIG string instead of a file.
+- `--all-candidates` skips LLM adjudication and outputs all lexicon candidates.
+- `--learn-unknowns` maps residual tokens to existing canonical concepts and appends alias rows to the overlay lexicon (use `--learn-dry-run` to preview).
+- Learning defaults to on; use `--learn-unknowns=false` to disable.
+- `--learn-tag-min-confidence` controls tag-only (aux_*) classifications (default 0.90).
+- Canonical output is always present; by default it uses an LLM canonicalizer and falls back to deterministic/raw if needed.
+- Use `--canonical=true` to force canonicalization, or `--canonical=false` to disable it (canonical will fall back to raw SIG).
+- `--context-window <N>` controls how much local context surrounds each mention in the adjudication prompt (default: 48).
+- Canonical output now includes `extra_notes` for fragments that don't fit the main sentence.
+- Static review UI: open `fast/codex/sig_viewer.html` and load JSON/JSONL locally.
+
 ### Git repository requirement
 
 Codex requires a Git repository to avoid destructive changes. To disable this check, use `codex exec --skip-git-repo-check`.

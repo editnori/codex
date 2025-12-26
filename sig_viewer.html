@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SmartSig Viewer v11</title>
+  <style>
+    :root{
+      /* === Solarized (canonical) === */
+      --base03:#002b36;
+      --base02:#073642;
+      --base01:#586e75;
+      --base00:#657b83;
+      --base0:#839496;
+      --base1:#93a1a1;
+      --base2:#eee8d5;
+      --base3:#fdf6e3;
+
+      --yellow:#b58900;
+      --orange:#cb4b16;
+      --red:#dc322f;
+      --magenta:#d33682;
+      --violet:#6c71c4;
+      --blue:#268bd2;
+      --cyan:#2aa198;
+      --green:#859900;
+
+      /* === UI role tokens (Solarized Light) === */
+      --bg: var(--base3);
+      --surface: var(--base2);
+      --text: var(--base01);         /* improved contrast vs base00 */
+      --text-strong: var(--base02);
+      --muted: var(--base00);
+
+      /* Slightly-darkened accent for focus rings (keeps Solarized hue, boosts visibility) */
+      --focus: #1e76b0;
+
+      --border: rgba(7,54,66,0.12);
+      --border-strong: rgba(88,110,117,0.22);
+
+      --card: color-mix(in srgb, var(--base3) 78%, var(--base2));
+      --card-2: color-mix(in srgb, var(--base3) 64%, var(--base2));
+
+      --shadow-0: 0 1px 0 rgba(0,0,0,.04), 0 6px 18px rgba(0,0,0,.08);
+      --shadow-1: 0 1px 0 rgba(0,0,0,.05), 0 10px 28px rgba(0,0,0,.10);
+
+      /* Spacing (8pt + 4pt sub-grid) */
+      --s-1: 4px;
+      --s-2: 8px;
+      --s-3: 12px;
+      --s-4: 16px;
+      --s-5: 24px;
+      --s-6: 32px;
+
+      --r-sm: 10px;
+      --r-md: 14px;
+      --r-lg: 18px;
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+
+      color-scheme: light;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+
+    /* Skip link (keyboard users) */
+    .skip{
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: var(--base03);
+      color: var(--base3);
+      text-decoration: none;
+      transform: translateY(-140%);
+      transition: transform .14s ease;
+      z-index: 9999;
+    }
+    .skip:focus{ transform: translateY(0); }
+
+    /* Focus ring (use :focus-visible) */
+    :where(button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible{
+      outline: none;
+      box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--focus) 22%, transparent),
+        0 0 0 1px var(--focus);
+    }
+    :where(button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])):focus:not(:focus-visible){
+      box-shadow: none;
+    }
+
+    /* App layout */
+    .app{
+      height:100vh;
+      display:grid;
+      grid-template-rows: 64px 1fr;
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:20;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 0 var(--s-4);
+      background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 78%, var(--bg)));
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(0,0,0,.04);
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      line-height:1.1;
+      min-width: 220px;
+    }
+    .brand .title{
+      font-weight: 780;
+      letter-spacing: .2px;
+      color: var(--text-strong);
+    }
+    .brand .sub{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      appearance:none;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-strong);
+      padding: 9px 12px;
+      border-radius: 999px;
+      box-shadow: var(--shadow-0);
+      font-weight: 700;
+      cursor:pointer;
+      transition: transform .06s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ box-shadow: var(--shadow-1); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      background: var(--base03);
+      color: var(--base3);
+      border-color: color-mix(in srgb, var(--base03) 28%, transparent);
+      box-shadow: 0 1px 0 rgba(0,0,0,.08), 0 10px 22px rgba(0,0,0,.16);
+    }
+    .btn.primary:hover{
+      box-shadow: 0 1px 0 rgba(0,0,0,.08), 0 14px 30px rgba(0,0,0,.18);
+    }
+    .btn.ghost{
+      background: transparent;
+      box-shadow:none;
+      color: var(--text-strong);
+    }
+    .btn.ghost:hover{
+      background: color-mix(in srgb, var(--base02) 6%, transparent);
+      box-shadow:none;
+      border-color: var(--border-strong);
+    }
+    .btn.small{ padding: 7px 10px; font-weight: 750; }
+
+    .file-input{ display:none; }
+
+    main.main{
+      display:grid;
+      grid-template-columns: minmax(320px, 420px) 1fr;
+      min-height:0;
+    }
+
+    .sidebar, .detail{
+      min-height:0;
+      overflow:auto;
+      padding: var(--s-4);
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      box-shadow: var(--shadow-0);
+      padding: var(--s-4);
+      margin-bottom: var(--s-4);
+    }
+
+    .card-head{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap: var(--s-3);
+      margin-bottom: var(--s-2);
+    }
+    .card h3{
+      margin:0;
+      font-size: 14px;
+      letter-spacing:.2px;
+      color: var(--text-strong);
+    }
+
+    .help{
+      margin: var(--s-1) 0 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    code, kbd{
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    kbd{
+      padding: 1px 6px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--text-strong);
+      box-shadow: 0 1px 0 rgba(0,0,0,.04);
+    }
+
+    .file-meta{
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    /* Dropzone: clickable + keyboardable (drag is optional) */
+    .dropzone{
+      border: 2px dashed color-mix(in srgb, var(--focus) 42%, var(--border-strong));
+      border-radius: var(--r-sm);
+      padding: var(--s-4);
+      background: var(--card-2);
+      cursor: pointer;
+    }
+    .dropzone.drag{
+      background: color-mix(in srgb, var(--blue) 10%, var(--card-2));
+      border-color: var(--focus);
+    }
+    .dz-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: var(--s-3);
+      flex-wrap:wrap;
+    }
+    .dz-title{
+      font-weight: 800;
+      color: var(--text-strong);
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-2);
+      margin-top: var(--s-3);
+    }
+    .kpi{
+      background: color-mix(in srgb, var(--card) 72%, white);
+      border:1px solid var(--border);
+      border-radius: 12px;
+      padding: var(--s-3);
+    }
+    .kpi .k{
+      font-size:11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .kpi .v{
+      font-weight: 850;
+      letter-spacing:.2px;
+      color: var(--text-strong);
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin: var(--s-3) 0;
+    }
+    label{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 750;
+    }
+
+    input[type="text"], select{
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      outline: none;
+      background: color-mix(in srgb, var(--card) 60%, white);
+      font-family: var(--sans);
+      color: var(--text-strong);
+    }
+    select{ cursor:pointer; }
+
+    input[type="checkbox"]{ accent-color: var(--focus); }
+
+    .toggle-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: var(--s-2);
+    }
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select:none;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .toggle:hover{
+      border-color: var(--border);
+      background: color-mix(in srgb, var(--base02) 4%, transparent);
+    }
+
+    .list-stats{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-top: var(--s-3);
+    }
+
+    /* Record items are buttons (keyboard-first) */
+    .item{
+      text-align:left;
+      width:100%;
+      border:1px solid var(--border);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--card) 60%, white);
+      padding: 10px;
+      cursor:pointer;
+      box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.08);
+      transition: transform .06s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .item:hover{ box-shadow: var(--shadow-1); }
+    .item:active{ transform: translateY(1px); }
+    .item.active{
+      border-color: color-mix(in srgb, var(--focus) 55%, var(--border));
+      box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--focus) 14%, transparent),
+        var(--shadow-1);
+      background: color-mix(in srgb, var(--blue) 6%, white);
+    }
+
+    .idx{
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .sigprev{
+      font-size: 12px;
+      color: var(--text-strong);
+      line-height:1.35;
+      max-height: 2.7em;
+      overflow:hidden;
+    }
+    .meta{
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 52%, white);
+      font-size: 11px;
+      color: var(--muted);
+      gap:6px;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px; background: var(--base1);
+      display:inline-block;
+    }
+    .dot.core{ background: var(--blue); }
+    .dot.noncore{ background: var(--cyan); }
+    .dot.resid{ background: var(--orange); }
+
+    .section-title{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: var(--s-3);
+    }
+    .section-title h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing:.2px;
+      color: var(--text-strong);
+    }
+    .section-title .hint{
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .sigbox{
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      background: color-mix(in srgb, var(--card) 60%, white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    mark{
+      padding: 1px 2px;
+      border-radius: 6px;
+    }
+    mark.core{
+      background: color-mix(in srgb, var(--blue) 24%, transparent);
+      outline: 1px solid color-mix(in srgb, var(--blue) 46%, transparent);
+    }
+    mark.noncore{
+      background: color-mix(in srgb, var(--cyan) 20%, transparent);
+      outline: 1px solid color-mix(in srgb, var(--cyan) 44%, transparent);
+    }
+    mark.resid{
+      background: color-mix(in srgb, var(--orange) 22%, transparent);
+      outline: 1px solid color-mix(in srgb, var(--orange) 44%, transparent);
+    }
+    mark.punct{
+      background: color-mix(in srgb, var(--base1) 18%, transparent);
+      outline: 1px dashed color-mix(in srgb, var(--base1) 52%, transparent);
+    }
+    mark.active-span{
+      outline: 2px solid var(--focus);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 14%, transparent);
+    }
+
+    .pulse{
+      animation: pulse 220ms ease-out 1;
+    }
+    @keyframes pulse{
+      0%{ transform: scale(1); }
+      50%{ transform: scale(1.02); }
+      100%{ transform: scale(1); }
+    }
+
+    .canonical{
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-strong);
+    }
+    .canonical .text{
+      font-weight: 780;
+      margin-bottom: 6px;
+    }
+    .canonical .notes{
+      margin-top: 8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tablewrap{
+      overflow:auto;
+      border:1px solid var(--border);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--card) 60%, white);
+    }
+    table{
+      width:100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 960px;
+    }
+    th, td{
+      padding: 10px 10px;
+      border-bottom:1px solid var(--border);
+      vertical-align: top;
+    }
+    th{
+      text-align:left;
+      font-size: 11px;
+      color: var(--muted);
+      position: sticky;
+      top: 0;
+      background: color-mix(in srgb, var(--surface) 55%, white);
+      z-index: 5;
+    }
+    tbody tr:hover td{
+      background: color-mix(in srgb, var(--blue) 6%, transparent);
+    }
+    tbody tr:focus-visible td{
+      background: color-mix(in srgb, var(--focus) 8%, transparent);
+    }
+    tr.active-row td{
+      background: color-mix(in srgb, var(--focus) 10%, transparent);
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 50%, white);
+      font-size: 11px;
+      margin: 2px 4px 0 0;
+      white-space: nowrap;
+      color: var(--muted);
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .2px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 45%, white);
+    }
+    .badge.core{ color: var(--blue); }
+    .badge.noncore{ color: var(--cyan); }
+    .badge.resid{ color: var(--orange); }
+
+    .empty{
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 24px 14px;
+      text-align:center;
+    }
+
+    .sr-only{
+      position:absolute;
+      width:1px; height:1px;
+      padding:0; margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
+    @media (max-width: 980px){
+      main.main{ grid-template-columns: 1fr; }
+      .sidebar{ border-bottom: 1px solid var(--border); }
+      table{ min-width: 820px; }
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="app">
+  <header role="banner">
+    <div class="brand" aria-label="Application title">
+      <div class="title">SmartSig Viewer</div>
+      <div class="sub">v8 — Solarized Light • focus-visible • reduced-motion aware</div>
+    </div>
+
+    <div class="top-actions">
+      <button class="btn primary" id="btnPick" type="button">Load JSONL</button>
+      <button class="btn ghost" id="btnClear" type="button">Clear</button>
+      <input class="file-input" id="fileInput" type="file" accept=".jsonl,.txt,application/jsonl,text/plain"/>
+    </div>
+  </header>
+
+  <main class="main" id="main" role="main">
+    <aside class="sidebar" aria-label="Records panel">
+      <section class="card">
+        <div class="card-head">
+          <h3>1) Load output</h3>
+          <div class="file-meta" id="fileMeta">No file loaded</div>
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-describedby="dropHelp">
+          <div class="dz-top">
+            <div class="dz-title">Drop a <code>.jsonl</code> file here</div>
+            <button class="btn small" id="btnPick2" type="button">Browse…</button>
+          </div>
+
+          <p class="help" id="dropHelp">
+            Expected format: one JSON object per line (SigExtractionOutput). Dragging is optional—use <kbd>Enter</kbd> or click to browse.
+          </p>
+
+          <div class="kpis" aria-live="polite" aria-atomic="true">
+            <div class="kpi"><div class="k">Records</div><div class="v" id="kRecords">0</div></div>
+            <div class="kpi"><div class="k">Parse errors</div><div class="v" id="kErrors">0</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>2) Filter</h3>
+          <button class="btn ghost small" id="btnResetFilters" type="button" title="Reset filters">Reset</button>
+        </div>
+
+        <div class="field">
+          <label for="q">Search (SIG or canonical)</label>
+          <input id="q" type="text" placeholder="e.g., taper, monday, mg, inhalation, SOB" autocomplete="off"/>
+          <p class="help">Shortcut: <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>⌘</kbd>+<kbd>K</kbd>) to focus search.</p>
+        </div>
+
+        <div class="field">
+          <label for="sort">Sort</label>
+          <select id="sort">
+            <option value="order">Original order</option>
+            <option value="residual_desc">Residuals (desc)</option>
+            <option value="coverage_asc">Coverage (asc)</option>
+            <option value="doc_asc">doc_id (A→Z)</option>
+          </select>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle"><input type="checkbox" id="onlyResidual"/> Only with residual spans</label>
+          <label class="toggle"><input type="checkbox" id="onlyPatches"/> Only with patches</label>
+        </div>
+
+        <p class="help">
+          Tip: residual spans are unmatched text and often indicate a missing lexicon term or an edge case.
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="card-head" style="margin-bottom:0;">
+          <h3>Records</h3>
+          <div class="pill" title="Legend">
+            <span class="dot core"></span><span>Core</span>
+            <span class="dot noncore"></span><span>Non-core</span>
+            <span class="dot resid"></span><span>Residual</span>
+          </div>
+        </div>
+
+        <div class="list-stats" id="listStats">Showing 0 of 0</div>
+
+        <div class="list" id="list" aria-label="Record list"></div>
+        <div class="empty" id="listEmpty" style="display:none;">No records match the current filter.</div>
+      </section>
+    </aside>
+
+    <section class="detail" aria-label="Details panel">
+      <section class="card" id="detailEmpty">
+        <div class="section-title">
+          <h2>3) Review details</h2>
+          <div class="hint">Select a record from the left.</div>
+        </div>
+        <p class="help">
+          The detail view is designed to answer three questions quickly:
+          (a) What is the original SIG? (b) What did the system normalize it to?
+          (c) Which spans drove that normalization, and what remains unmatched?
+        </p>
+      </section>
+
+      <div id="detailView" style="display:none;">
+        <section class="card">
+          <div class="section-title">
+            <h2>Raw SIG</h2>
+            <div class="hint" id="detailMeta"></div>
+          </div>
+          <div class="sigbox" id="rawSig"></div>
+          <p class="help">
+            Highlighting is based on span <span class="chip"><span class="dot core"></span>CORE</span>,
+            <span class="chip"><span class="dot noncore"></span>NON_CORE</span>, and
+            <span class="chip"><span class="dot resid"></span>RESIDUAL</span>.
+            Click a table row to focus it (or click a highlighted span to jump to the row).
+          </p>
+        </section>
+
+        <section class="card">
+          <div class="section-title">
+            <h2>Canonical</h2>
+            <div class="hint">
+              <button class="btn ghost small" id="btnCopy" type="button">Copy</button>
+            </div>
+          </div>
+
+          <div class="canonical">
+            <div class="text" id="canonText">—</div>
+            <div class="notes" id="canonNotes"></div>
+          </div>
+
+          <p class="help">
+            For taper/titration SIGs, canonical text may contain multiple steps (often separated by semicolons) to preserve sequencing.
+          </p>
+        </section>
+
+        <section class="card">
+          <div class="section-title">
+            <h2>Structure</h2>
+            <div class="hint">Deterministic clause segmentation + complexity flags (v11).</div>
+          </div>
+
+          <div class="canonical">
+            <div class="text" id="structureMeta">—</div>
+            <div class="notes" id="structureSteps"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-title">
+            <h2>Spans</h2>
+            <div class="hint" id="spanSummary"></div>
+          </div>
+
+          <div class="tablewrap">
+            <table aria-label="Span table">
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Category</th>
+                  <th>Text</th>
+                  <th>Normalized</th>
+                  <th>Tags</th>
+                  <th>Confidence</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody id="spanRows"></tbody>
+            </table>
+          </div>
+
+          <p class="help">
+            Tip: Press <kbd>Tab</kbd> into the table to focus rows; press <kbd>Enter</kbd> to jump to the highlighted span.
+          </p>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="sr-only" id="srStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+(() => {
+  const state = {
+    records: [],
+    filtered: [],
+    selected: -1,
+    parseErrors: 0,
+    file: null,
+    activeSpanKey: null,
+  };
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = (id) => document.getElementById(id);
+
+  const btnPick = el('btnPick');
+  const btnPick2 = el('btnPick2');
+  const btnClear = el('btnClear');
+  const btnResetFilters = el('btnResetFilters');
+
+  const fileInput = el('fileInput');
+  const dropzone = el('dropzone');
+  const fileMeta = el('fileMeta');
+
+  const q = el('q');
+  const sortSel = el('sort');
+  const onlyResidual = el('onlyResidual');
+  const onlyPatches = el('onlyPatches');
+
+  const kRecords = el('kRecords');
+  const kErrors = el('kErrors');
+
+  const listStats = el('listStats');
+  const list = el('list');
+  const listEmpty = el('listEmpty');
+
+  const detailEmpty = el('detailEmpty');
+  const detailView = el('detailView');
+  const rawSig = el('rawSig');
+  const detailMeta = el('detailMeta');
+  const canonText = el('canonText');
+  const canonNotes = el('canonNotes');
+  const structureMeta = el('structureMeta');
+  const structureSteps = el('structureSteps');
+  const spanRows = el('spanRows');
+  const spanSummary = el('spanSummary');
+  const btnCopy = el('btnCopy');
+
+  const srStatus = el('srStatus');
+
+  function announce(msg){
+    srStatus.textContent = msg;
+  }
+
+  function safeJsonParse(line) {
+    try { return { ok: true, value: JSON.parse(line) }; }
+    catch (e) { return { ok: false, error: e }; }
+  }
+
+  function isRecord(obj) {
+    return obj && typeof obj === 'object' && typeof obj.sig === 'string' && Array.isArray(obj.spans);
+  }
+
+  function normalizeRole(r) {
+    if (!r) return 'NON_CORE';
+    const up = String(r).toUpperCase();
+    if (up.includes('CORE')) return 'CORE';
+    if (up.includes('RESID')) return 'RESIDUAL';
+    return up;
+  }
+
+  function roleClass(role, category) {
+    const up = normalizeRole(role);
+    if (category === 'residual_text') return 'resid';
+    if (category === 'punct') return 'punct';
+    if (up === 'CORE') return 'core';
+    if (up === 'RESIDUAL') return 'resid';
+    return 'noncore';
+  }
+
+  function badgeClass(role, category) {
+    const up = normalizeRole(role);
+    if (category === 'residual_text') return 'resid';
+    if (up === 'CORE') return 'core';
+    if (up === 'RESIDUAL') return 'resid';
+    return 'noncore';
+  }
+
+  function spanPriority(s){
+    if (!s) return -1;
+    if (s.category === 'residual_text') return 3;
+    if (normalizeRole(s.role) === 'CORE') return 2;
+    if (s.category === 'punct') return 0;
+    return 1;
+  }
+
+  function renderNormalized(n) {
+  if (!n) return '<span class="muted">—</span>';
+
+  // v10+ shape (serde tagged enum): {kind: "CODED"|"NUMERIC"|...}
+  if (typeof n.kind === 'string') {
+    const k = n.kind.toUpperCase();
+    if (k === 'CODED') {
+      const cid = n.concept_id || '—';
+      const pref = n.preferred || '—';
+      return `<span class="mono">${escapeHtml(cid)}</span><span class="muted"> · </span>${escapeHtml(pref)}`;
+    }
+    if (k === 'NUMERIC') {
+      const nk = n.number_kind || 'NUM';
+      const norm = (n.normalized !== undefined && n.normalized !== null) ? String(n.normalized) : '—';
+      const raw = (n.raw !== undefined && n.raw !== null) ? String(n.raw) : '';
+      const tail = raw ? `<span class="muted"> (raw: </span><span class="mono">${escapeHtml(raw)}</span><span class="muted">)</span>` : '';
+      return `<span class="mono">${escapeHtml(nk)}</span><span class="muted"> → </span><span class="mono">${escapeHtml(norm)}</span>${tail}`;
+    }
+    if (k === 'TEXT') {
+      return `<span class="muted">${escapeHtml(n.label || 'TEXT')}</span>`;
+    }
+    if (k === 'DATE') {
+      return `<span class="mono">${escapeHtml(n.iso || '—')}</span>`;
+    }
+    if (k === 'ICD') {
+      const sys = n.system ? ` <span class="muted">(${escapeHtml(n.system)})</span>` : '';
+      return `<span class="mono">${escapeHtml(n.code || '—')}</span>${sys}`;
+    }
+    if (k === 'REJECTED') {
+      return `<span class="muted">Rejected</span><span class="muted"> · </span><span class="mono">${escapeHtml(n.reason || '—')}</span>`;
+    }
+  }
+
+  // Legacy shape fallback (nested objects)
+  if (n.Coded) {
+    const cid = n.Coded.concept_id || '—';
+    const pref = n.Coded.preferred || '—';
+    return `<span class="mono">${escapeHtml(cid)}</span><span class="muted"> · </span>${escapeHtml(pref)}`;
+  }
+  if (n.Numeric) {
+    const nk = n.Numeric.number_kind || 'NUM';
+    const norm = (n.Numeric.normalized !== undefined && n.Numeric.normalized !== null) ? String(n.Numeric.normalized) : '—';
+    const raw = (n.Numeric.raw !== undefined && n.Numeric.raw !== null) ? String(n.Numeric.raw) : '';
+    const tail = raw ? `<span class="muted"> (raw: </span><span class="mono">${escapeHtml(raw)}</span><span class="muted">)</span>` : '';
+    return `<span class="mono">${escapeHtml(nk)}</span><span class="muted"> → </span><span class="mono">${escapeHtml(norm)}</span>${tail}`;
+  }
+  if (n.Text) return `<span class="muted">${escapeHtml(n.Text.label || 'TEXT')}</span>`;
+  if (n.Date) return `<span class="mono">${escapeHtml(n.Date.iso || '—')}</span>`;
+  if (n.Icd) return `<span class="mono">${escapeHtml(n.Icd.code || '—')}</span>`;
+  if (n.Rejected) return `<span class="muted">Rejected</span><span class="muted"> · </span><span class="mono">${escapeHtml(n.Rejected.reason || '—')}</span>`;
+
+  return '<span class="muted">—</span>';
+}
+
+  function spanKey(s) {
+    return (s && s.span) ? `${s.span.start}:${s.span.end}:${s.category}` : Math.random().toString(16).slice(2);
+  }
+
+  function clampSpan(span, L){
+    const st = Math.max(0, Math.min(L, Number(span.start)));
+    const en = Math.max(0, Math.min(L, Number(span.end)));
+    return [st, en];
+  }
+
+  function computeCoverage(sigText, spans) {
+    const L = sigText.length;
+    const intervals = (spans || [])
+      .filter(s => s && s.span && typeof s.span.start === 'number' && typeof s.span.end === 'number')
+      .filter(s => s.category !== 'punct')
+      .map(s => clampSpan(s.span, L))
+      .filter(([st,en]) => en > st)
+      .sort((a,b)=>a[0]-b[0] || a[1]-b[1]);
+
+    if (!L || intervals.length === 0) return 0;
+
+    let covered = 0;
+    let [curSt, curEn] = intervals[0];
+    for (let i = 1; i < intervals.length; i++){
+      const [st, en] = intervals[i];
+      if (st > curEn){
+        covered += (curEn - curSt);
+        curSt = st;
+        curEn = en;
+      } else {
+        curEn = Math.max(curEn, en);
+      }
+    }
+    covered += (curEn - curSt);
+    return Math.round(100 * covered / L);
+  }
+
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#039;');
+  }
+
+  function buildHighlightedSig(rec) {
+    const text = rec.sig || '';
+    const L = text.length;
+    if (!L) return '—';
+
+    const bestPr = new Array(L).fill(-1);
+    const bestCls = new Array(L).fill(null);
+    const bestKey = new Array(L).fill(null);
+
+    const spans = (rec.spans || []).filter(s => s && s.span && typeof s.span.start === 'number' && typeof s.span.end === 'number');
+
+    for (const s of spans){
+      const [st, en] = clampSpan(s.span, L);
+      if (en <= st) continue;
+
+      const pr = spanPriority(s);
+      const cls = roleClass(s.role, s.category);
+      const key = spanKey(s);
+
+      for (let i = st; i < en; i++){
+        if (pr > bestPr[i]){
+          bestPr[i] = pr;
+          bestCls[i] = cls;
+          bestKey[i] = key;
+        }
+      }
+    }
+
+    let out = '';
+    let i = 0;
+    while (i < L){
+      const cls = bestCls[i];
+      if (!cls){
+        let j = i + 1;
+        while (j < L && !bestCls[j]) j++;
+        out += escapeHtml(text.slice(i, j));
+        i = j;
+        continue;
+      }
+      const key = bestKey[i];
+      let j = i + 1;
+      while (j < L && bestCls[j] === cls && bestKey[j] === key) j++;
+      out += `<mark class="${cls}" data-span="${escapeHtml(key)}">${escapeHtml(text.slice(i, j))}</mark>`;
+      i = j;
+    }
+    return out;
+  }
+
+  function pulse(node){
+    if (!node || prefersReducedMotion) return;
+    node.classList.remove('pulse');
+    // force reflow to restart animation
+    void node.offsetWidth;
+    node.classList.add('pulse');
+  }
+
+  function setActiveSpan(key){
+    state.activeSpanKey = key;
+
+    rawSig.querySelectorAll('mark.active-span').forEach(m => m.classList.remove('active-span'));
+    spanRows.querySelectorAll('tr.active-row').forEach(tr => tr.classList.remove('active-row'));
+
+    if (!key) return;
+
+    const m = rawSig.querySelector(`mark[data-span="${CSS.escape(key)}"]`);
+    if (m) m.classList.add('active-span');
+
+    const row = spanRows.querySelector(`tr[data-span="${CSS.escape(key)}"]`);
+    if (row) row.classList.add('active-row');
+  }
+
+  function focusMarkForKey(key){
+    const m = rawSig.querySelector(`mark[data-span="${CSS.escape(key)}"]`);
+    if (!m) return;
+    m.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
+    pulse(m);
+  }
+
+  function focusRowForKey(key){
+    const row = spanRows.querySelector(`tr[data-span="${CSS.escape(key)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' });
+    row.focus({ preventScroll: true });
+    pulse(row);
+  }
+
+  function enrichRecord(rec, order){
+    const sig = rec.sig || '';
+    const canon = (rec.canonical && typeof rec.canonical.text === 'string') ? rec.canonical.text : '';
+    const spans = Array.isArray(rec.spans) ? rec.spans : [];
+    const residualCount = spans.filter(s => s && s.category === 'residual_text').length;
+    const patchCount = Array.isArray(rec.patches) ? rec.patches.length : 0;
+    const coverage = computeCoverage(sig, spans);
+    const coreCount = spans.filter(s => normalizeRole(s.role) === 'CORE' && s.category !== 'punct').length;
+    const nonCoreCount = spans.filter(s => normalizeRole(s.role) !== 'CORE' && s.category !== 'punct' && s.category !== 'residual_text').length;
+
+    rec.__meta = {
+      order,
+      sigLower: sig.toLowerCase(),
+      canonLower: canon.toLowerCase(),
+      residualCount,
+      patchCount,
+      coverage,
+      coreCount,
+      nonCoreCount,
+    };
+    return rec;
+  }
+
+  function sortRecords(arr){
+    const mode = sortSel.value;
+    const a = arr.slice();
+
+    if (mode === 'residual_desc'){
+      a.sort((x,y) =>
+        (y.__meta.residualCount - x.__meta.residualCount) ||
+        (x.__meta.coverage - y.__meta.coverage) ||
+        (x.__meta.order - y.__meta.order)
+      );
+      return a;
+    }
+    if (mode === 'coverage_asc'){
+      a.sort((x,y) =>
+        (x.__meta.coverage - y.__meta.coverage) ||
+        (y.__meta.residualCount - x.__meta.residualCount) ||
+        (x.__meta.order - y.__meta.order)
+      );
+      return a;
+    }
+    if (mode === 'doc_asc'){
+      a.sort((x,y) => {
+        const dx = (x.doc_id || '').toLowerCase();
+        const dy = (y.doc_id || '').toLowerCase();
+        if (dx < dy) return -1;
+        if (dx > dy) return 1;
+        return x.__meta.order - y.__meta.order;
+      });
+      return a;
+    }
+    // default: original order
+    a.sort((x,y) => x.__meta.order - y.__meta.order);
+    return a;
+  }
+
+  function refreshFilters(){
+    const query = q.value.trim().toLowerCase();
+    const selectedRec = (state.selected >= 0 && state.selected < state.filtered.length)
+      ? state.filtered[state.selected]
+      : null;
+
+    let out = state.records.filter((r) => {
+      if (onlyResidual.checked && r.__meta.residualCount === 0) return false;
+      if (onlyPatches.checked && r.__meta.patchCount === 0) return false;
+      if (!query) return true;
+      return r.__meta.sigLower.includes(query) || r.__meta.canonLower.includes(query);
+    });
+
+    out = sortRecords(out);
+    state.filtered = out;
+
+    listStats.textContent = `Showing ${state.filtered.length} of ${state.records.length}`;
+    renderList();
+
+    if (state.filtered.length === 0){
+      select(-1, { userInitiated:false });
+      return;
+    }
+
+    let nextIndex = 0;
+    if (selectedRec){
+      const idx = state.filtered.indexOf(selectedRec);
+      if (idx !== -1) nextIndex = idx;
+    } else if (state.selected !== -1){
+      nextIndex = Math.min(state.selected, state.filtered.length - 1);
+    }
+
+    select(nextIndex, { userInitiated:false });
+  }
+
+  function renderList(){
+    list.innerHTML = '';
+    listEmpty.style.display = state.filtered.length ? 'none' : 'block';
+
+    state.filtered.forEach((r, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'item' + (i === state.selected ? ' active' : '');
+      btn.dataset.index = String(i);
+
+      btn.innerHTML = `
+        <div class="idx">#${i+1} • doc_id=${escapeHtml(r.doc_id || '—')}</div>
+        <div class="sigprev">${escapeHtml(r.sig)}</div>
+        <div class="meta">
+          <span class="pill"><span class="dot resid"></span>residual ${r.__meta.residualCount}</span>
+          <span class="pill"><span class="dot noncore"></span>patches ${r.__meta.patchCount}</span>
+          <span class="pill"><span class="dot core"></span>coverage ${r.__meta.coverage}%</span>
+        </div>
+      `;
+
+      btn.setAttribute('aria-label', `Record ${i+1}. doc_id ${r.doc_id || 'none'}. Residual ${r.__meta.residualCount}. Patches ${r.__meta.patchCount}. Coverage ${r.__meta.coverage} percent.`);
+
+      btn.addEventListener('click', () => {
+        select(i, { userInitiated:true, focusList:false });
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End'){
+          e.preventDefault();
+          const last = state.filtered.length - 1;
+          let next = i;
+          if (e.key === 'ArrowDown') next = Math.min(last, i + 1);
+          if (e.key === 'ArrowUp') next = Math.max(0, i - 1);
+          if (e.key === 'Home') next = 0;
+          if (e.key === 'End') next = last;
+          focusListItem(next, { selectToo:true });
+        }
+      });
+
+      list.appendChild(btn);
+    });
+  }
+
+  function focusListItem(i, { selectToo=false } = {}){
+    const items = list.querySelectorAll('.item');
+    const node = items[i];
+    if (!node) return;
+    node.focus({ preventScroll: true });
+    node.scrollIntoView({ block: 'nearest' });
+    if (selectToo) select(i, { userInitiated:true, focusList:false, scrollList:false });
+  }
+
+  function select(i, { userInitiated=false, focusList=false, scrollList=true } = {}){
+    state.selected = i;
+
+    const items = [...list.querySelectorAll('.item')];
+    items.forEach((n, idx) => {
+      const active = idx === i;
+      n.classList.toggle('active', active);
+      n.setAttribute('aria-current', active ? 'true' : 'false');
+    });
+
+    if (scrollList && i >= 0 && items[i]){
+      items[i].scrollIntoView({ block: 'nearest' });
+      if (focusList) items[i].focus({ preventScroll: true });
+    }
+
+    if (i < 0 || i >= state.filtered.length){
+      detailEmpty.style.display = 'block';
+      detailView.style.display = 'none';
+      state.activeSpanKey = null;
+      return;
+    }
+
+    const rec = state.filtered[i];
+    detailEmpty.style.display = 'none';
+    detailView.style.display = 'block';
+
+    detailMeta.textContent =
+      `doc_id=${rec.doc_id || '—'} • coverage ${rec.__meta.coverage}% • core ${rec.__meta.coreCount} • non-core ${rec.__meta.nonCoreCount} • residual ${rec.__meta.residualCount}`;
+
+    rawSig.innerHTML = buildHighlightedSig(rec);
+    setActiveSpan(null);
+
+    // Canonical
+    const canon = rec.canonical || null;
+    canonText.textContent = (canon && canon.text) ? canon.text : '—';
+    canonNotes.innerHTML = '';
+    if (canon && Array.isArray(canon.extra_notes) && canon.extra_notes.length) {
+      for (const n of canon.extra_notes) {
+        const div = document.createElement('div');
+        div.textContent = '• ' + n;
+        canonNotes.appendChild(div);
+      }
+    }
+
+    // Structure (v11)
+    const st = rec.structure || null;
+    structureMeta.textContent = '—';
+    structureSteps.innerHTML = '';
+
+    if (st) {
+      const flags = Array.isArray(st.flags) ? st.flags : [];
+      const steps = Array.isArray(st.steps) ? st.steps : [];
+      const kind = st.kind || '—';
+
+      structureMeta.textContent = `${kind} • ${flags.length} flag${flags.length === 1 ? '' : 's'} • ${steps.length} step${steps.length === 1 ? '' : 's'}`;
+
+      if (flags.length) {
+        const div = document.createElement('div');
+        div.style.marginBottom = '8px';
+        div.innerHTML = flags.map(f => `<span class="chip">${escapeHtml(f)}</span>`).join('');
+        structureSteps.appendChild(div);
+      }
+
+      if (steps.length) {
+        const ol = document.createElement('ol');
+        ol.style.margin = '0';
+        ol.style.paddingLeft = '18px';
+        for (const step of steps) {
+          const li = document.createElement('li');
+          const sk = step.kind || 'STEP';
+          const txt = (step.span && step.span.text) ? step.span.text : '';
+          li.innerHTML = `<span class="chip">${escapeHtml(sk)}</span> <span style="font-family:var(--mono)">${escapeHtml(txt)}</span>`;
+          ol.appendChild(li);
+        }
+        structureSteps.appendChild(ol);
+      }
+    }
+
+    // Structure (v11)
+    const st = rec.structure || null;
+    structureMeta.textContent = '—';
+    structureSteps.innerHTML = '';
+
+    if (st) {
+      const flags = Array.isArray(st.flags) ? st.flags : [];
+      const steps = Array.isArray(st.steps) ? st.steps : [];
+      const kind = st.kind || '—';
+
+      structureMeta.textContent = `${kind} • ${flags.length} flag${flags.length === 1 ? '' : 's'} • ${steps.length} step${steps.length === 1 ? '' : 's'}`;
+
+      if (flags.length) {
+        const div = document.createElement('div');
+        div.style.marginBottom = '8px';
+        div.innerHTML = flags.map(f => `<span class="chip">${escapeHtml(f)}</span>`).join('');
+        structureSteps.appendChild(div);
+      }
+
+      if (steps.length) {
+        const ol = document.createElement('ol');
+        ol.style.margin = '0';
+        ol.style.paddingLeft = '18px';
+        for (const step of steps) {
+          const li = document.createElement('li');
+          const sk = step.kind || 'STEP';
+          const txt = (step.span && step.span.text) ? step.span.text : '';
+          li.innerHTML = `<span class="chip">${escapeHtml(sk)}</span> <span style="font-family:var(--mono)">${escapeHtml(txt)}</span>`;
+          ol.appendChild(li);
+        }
+        structureSteps.appendChild(ol);
+      }
+    }
+
+    // Spans table
+    spanRows.innerHTML = '';
+    const spans = (rec.spans || []).slice().sort((a,b)=> (a.span?.start ?? 0) - (b.span?.start ?? 0) || (a.span?.end ?? 0) - (b.span?.end ?? 0));
+    for (const s of spans) {
+      const tr = document.createElement('tr');
+      const key = spanKey(s);
+      tr.dataset.span = key;
+      tr.tabIndex = 0;
+
+      const bcls = badgeClass(s.role, s.category);
+      const roleTxt = (s.category === 'residual_text') ? 'RESIDUAL' : normalizeRole(s.role);
+      const norm = renderNormalized(s.normalized);
+
+      const tags = (Array.isArray(s.tags) && s.tags.length) ? s.tags : [];
+      const tagHtml = tags.map(t => `<span class="chip">${escapeHtml(t)}</span>`).join('') || '<span style="color:var(--muted)">—</span>';
+
+      tr.innerHTML = `
+        <td><span class="badge ${bcls}">${escapeHtml(roleTxt)}</span></td>
+        <td><span class="chip">${escapeHtml(s.category)}</span></td>
+        <td style="font-family:var(--mono)">${escapeHtml(s.span?.text || '')}</td>
+        <td>${escapeHtml(norm)}</td>
+        <td>${tagHtml}</td>
+        <td>${(typeof s.confidence === 'number') ? s.confidence.toFixed(2) : '—'}</td>
+        <td>${escapeHtml(s.source || '—')}</td>
+      `;
+
+      const activate = () => {
+        setActiveSpan(key);
+        focusMarkForKey(key);
+      };
+
+      tr.addEventListener('click', activate);
+      tr.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          activate();
+        }
+      });
+
+      spanRows.appendChild(tr);
+    }
+
+    spanSummary.textContent = `${spans.length} spans`;
+
+    if (userInitiated){
+      announce(`Selected record ${i+1} of ${state.filtered.length}.`);
+    }
+  }
+
+  async function loadFile(file) {
+    state.file = file;
+    fileMeta.textContent = `${file.name} • ${(file.size/1024).toFixed(1)} KB`;
+
+    const text = await file.text();
+    state.parseErrors = 0;
+    state.records = [];
+    state.filtered = [];
+    state.selected = -1;
+
+    // Strip null bytes (can happen in some pipelines)
+    const cleaned = text.replaceAll('\u0000','');
+
+    const lines = cleaned.split(/\r?\n/).filter(l => l.trim().length > 0);
+    let order = 0;
+    for (const line of lines) {
+      const { ok, value } = safeJsonParse(line);
+      if (!ok) {
+        state.parseErrors += 1;
+        continue;
+      }
+      if (isRecord(value)) state.records.push(enrichRecord(value, order++));
+    }
+
+    kRecords.textContent = String(state.records.length);
+    kErrors.textContent = String(state.parseErrors);
+
+    refreshFilters();
+    if (state.filtered.length > 0){
+      select(0, { userInitiated:false });
+    } else {
+      select(-1, { userInitiated:false });
+    }
+
+    announce(`Loaded ${state.records.length} records. Parse errors: ${state.parseErrors}.`);
+  }
+
+  async function copyText(text){
+    const t = String(text || '');
+    try{
+      await navigator.clipboard.writeText(t);
+      return true;
+    } catch (e){
+      // Fallback for local-file contexts
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = t;
+        ta.setAttribute('readonly','');
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        ta.style.left = '-1000px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (e2){
+        return false;
+      }
+    }
+  }
+
+  // Copy canonical
+  btnCopy.addEventListener('click', async () => {
+    if (state.selected < 0 || state.selected >= state.filtered.length) return;
+    const rec = state.filtered[state.selected];
+    const text = rec.canonical && rec.canonical.text ? rec.canonical.text : '';
+    const ok = await copyText(text);
+
+    btnCopy.textContent = ok ? 'Copied' : 'Copy failed';
+    announce(ok ? 'Copied canonical SIG to clipboard.' : 'Copy failed.');
+    setTimeout(() => btnCopy.textContent = 'Copy', 900);
+  });
+
+  // Mark click -> focus table row
+  rawSig.addEventListener('click', (e) => {
+    const m = e.target.closest('mark[data-span]');
+    if (!m) return;
+    const key = m.getAttribute('data-span');
+    setActiveSpan(key);
+    focusRowForKey(key);
+  });
+
+  // file pick
+  btnPick.addEventListener('click', () => fileInput.click());
+  btnPick2.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) loadFile(f);
+  });
+
+  function clearAll(){
+    state.records = [];
+    state.filtered = [];
+    state.selected = -1;
+    state.parseErrors = 0;
+    state.file = null;
+    state.activeSpanKey = null;
+
+    fileInput.value = '';
+    fileMeta.textContent = 'No file loaded';
+
+    kRecords.textContent = '0';
+    kErrors.textContent = '0';
+    listStats.textContent = 'Showing 0 of 0';
+
+    list.innerHTML = '';
+    listEmpty.style.display = 'none';
+    select(-1, { userInitiated:false });
+
+    announce('Cleared records.');
+  }
+
+  btnClear.addEventListener('click', clearAll);
+
+  btnResetFilters.addEventListener('click', () => {
+    q.value = '';
+    sortSel.value = 'order';
+    onlyResidual.checked = false;
+    onlyPatches.checked = false;
+    refreshFilters();
+    announce('Filters reset.');
+  });
+
+  // filters
+  q.addEventListener('input', refreshFilters);
+  sortSel.addEventListener('change', refreshFilters);
+  onlyResidual.addEventListener('change', refreshFilters);
+  onlyPatches.addEventListener('change', refreshFilters);
+
+  // drag-drop
+  dropzone.addEventListener('dragenter', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('drag'); });
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  // Click/keyboard alternative to dragging (drag is optional)
+  dropzone.addEventListener('click', (e) => {
+    // If the user clicked the nested browse button, that handler already ran.
+    if (e.target && e.target.closest('button')) return;
+    fileInput.click();
+  });
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  // Shortcut: Ctrl/Cmd + K focuses search
+  document.addEventListener('keydown', (e) => {
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (mod && (e.key === 'k' || e.key === 'K')){
+      e.preventDefault();
+      q.focus();
+      q.select();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>

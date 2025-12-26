@@ -1,0 +1,25 @@
+-- v10 overlay: learned aliases (safe to append)
+-- SmartSig SIG Lexicon OVERLAY (.script)
+-- Purpose: incremental, append-only alias additions learned from residual spans
+-- Generated: 2025-12-24T11:28:20Z
+-- NOTE: This file is meant to be loaded in addition to the base lexicon.
+
+-- Example learned aliases (can be removed if you want the system to learn them live):
+INSERT INTO CUI_TERMS VALUES('dx:267036007','dx',0,'SOB','sob');
+-- Optional phrase-level aliases:
+INSERT INTO CUI_TERMS VALUES('dx:267036007','dx',0,'shortness of breath','breath');
+INSERT INTO CUI_TERMS VALUES('dx:267036007','dx',0,'short of breath','breath');
+INSERT INTO CUI_TERMS VALUES('dx:73211009','dx',0,'diabetes','diabetes');
+INSERT INTO CUI_TERMS VALUES('dx:272040008','dx',0,'wheezing','wheezing');
+INSERT INTO CUI_TERMS VALUES('dx:55300003','dx',0,'cramping','cramping');
+INSERT INTO CUI_TERMS VALUES('dx:698065002','dx',0,'gastroesophageal','gastroesophageal');
+INSERT INTO CUI_TERMS VALUES('dx:698065002','dx',0,'reflux','reflux');
+INSERT INTO CUI_TERMS VALUES('dx:698065002','dx',0,'disease','disease');
+INSERT INTO CUI_TERMS VALUES('dx:22253000','dx',0,'chest','chest');
+INSERT INTO CUI_TERMS VALUES('dx:193462001','dx',0,'sleep','sleep');
+INSERT INTO CUI_TERMS VALUES('dx:399923009','dx',0,'ra','ra');
+INSERT INTO CUI_TERMS VALUES('dx:14304000','dx',0,'hypothyroidism','hypothyroidism');
+INSERT INTO CUI_TERMS VALUES('dx:32914008','dx',0,'restless','restless');
+INSERT INTO CUI_TERMS VALUES('dx:32914008','dx',0,'leg','leg');
+INSERT INTO CUI_TERMS VALUES('dx:37796009','dx',0,'migraines','migraines');
+INSERT INTO CUI_TERMS VALUES('dx:25064002','dx',0,'headaches','headaches');
